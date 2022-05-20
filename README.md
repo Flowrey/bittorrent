@@ -1,9 +1,9 @@
 # Flowrey's dotfiles
 
-## Requirement
+## Requirements
 
 ```bash
-sudo apt install stow git
+sudo apt install stow git make
 ```
 
 ## Installation
