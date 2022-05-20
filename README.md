@@ -10,5 +10,6 @@ sudo apt install stow git
 
 ```bash
 git clone --recurse-submodules -j8 https://github.com/Flowrey/dotfiles.git
+cd dotfiles
 make
 ```
