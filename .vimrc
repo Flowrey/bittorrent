@@ -36,4 +36,3 @@ autocmd vimenter * ++nested colorscheme gruvbox
 " vim-commentary: https://github.com/tpope/vim-commentary.git
 " vim-surround: https://github.com/tpope/vim-surround.git
 " syntastic: https://github.com/vim-syntastic/syntastic 
-" youCompleteMe: https://github.com/ycm-core/YouCompleteMe

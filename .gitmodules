@@ -26,10 +26,6 @@
 	path = .vim/pack/plugins/start/syntastic
 	url = https://github.com/vim-syntastic/syntastic.git
 	branch = master
-[submodule ".vim/pack/plugins/start/YouCompleteMe"]
-	path = .vim/pack/plugins/start/YouCompleteMe
-	url = https://github.com/ycm-core/YouCompleteMe.git
-	branch = master
 [submodule ".vim/pack/plugins/start/vim-sensible"]
 	path = .vim/pack/plugins/start/vim-sensible
 	url = https://github.com/tpope/vim-sensible.git
