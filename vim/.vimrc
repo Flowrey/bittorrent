@@ -17,6 +17,7 @@ let g:syntastic_mode_map = {
 	\ "passive_filetypes": ["go"] }
 
 set background=dark
+set mouse=a
 
 set number
 set wildmenu

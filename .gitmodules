@@ -30,3 +30,7 @@
 	path = vim/.vim/pack/plugins/start/vim-sensible
 	url = https://github.com/tpope/vim-sensible.git
 	branch = master
+[submodule "vim/.vim/pack/plugins/start/rust.vim"]
+	path = vim/.vim/pack/plugins/start/rust.vim
+	url = https://github.com/rust-lang/rust.vim.git
+	branch = master
