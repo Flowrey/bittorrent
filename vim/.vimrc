@@ -3,7 +3,7 @@ syntax on
 
 let mapleader = ","
 
-let g:gruvbox_italic=1
+let g:gruvbox_italic=0
 let g:gruvbox_termcolors=16
 
 let g:syntastic_always_populate_loc_list = 1
