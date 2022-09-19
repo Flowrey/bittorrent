@@ -3,8 +3,15 @@ syntax on
 
 let mapleader = ","
 
-let g:gruvbox_italic=0
-let g:gruvbox_termcolors=16
+let g:gruvbox_italic=1
+let g:gruvbox_contrast_dark = "hard"
+
+if !has('gui_running') && &term =~ '^\%(screen\|tmux\)'
+  let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
+  let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
+endif
+
+set termguicolors
 
 let g:syntastic_always_populate_loc_list = 1
 let g:syntastic_auto_loc_list = 0
