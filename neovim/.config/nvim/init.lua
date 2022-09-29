@@ -5,6 +5,9 @@ require('packer').startup(function()
   use 'rust-lang/rust.vim'
   use 'fatih/vim-go'
   use 'morhetz/gruvbox'
+  use 'tpope/vim-commentary'
+  use 'tpope/vim-surround'
+  use 'tpope/vim-fugitive'
   use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate' }
 end)
 
