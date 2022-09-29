@@ -31,14 +31,25 @@ local on_attach = function(client, bufnr)
 end
 
 require('lspconfig')['pyright'].setup{
-    on_attach = on_attach
+	on_attach = on_attach,
+	settings = {
+		python = {
+			analysis = {
+				autoSearchPaths = true,
+				diagnosticMode = "workspace",
+				typeCheckingMode = "strict",
+				useLibraryCodeForTypes = true
+			}
+		}
+	}
 }
+
 require('lspconfig')['rust_analyzer'].setup{
-    on_attach = on_attach
+	on_attach = on_attach
 }
 require'nvim-treesitter.configs'.setup {
-    ensure_installed = { "python", "rust", "go" },
-    highlight = {
-	enable = true
-    }
+	ensure_installed = { "python", "rust", "go" },
+	highlight = {
+		enable = true
+	}
 }
