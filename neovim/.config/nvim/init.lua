@@ -1,20 +1,26 @@
 local use = require('packer').use
 require('packer').startup(function()
-  use 'wbthomason/packer.nvim'
-  use 'neovim/nvim-lspconfig'
-  use 'rust-lang/rust.vim'
-  use 'fatih/vim-go'
-  use 'morhetz/gruvbox'
-  use 'tpope/vim-commentary'
-  use 'tpope/vim-surround'
-  use 'tpope/vim-fugitive'
-  use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate' }
+    use 'wbthomason/packer.nvim'
+    use 'neovim/nvim-lspconfig'
+    use 'rust-lang/rust.vim'
+    use 'fatih/vim-go'
+    use 'morhetz/gruvbox'
+    use 'tpope/vim-commentary'
+    use 'tpope/vim-surround'
+    use 'tpope/vim-fugitive'
+    use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate' }
 end)
 
 vim.g.gruvbox_italic = 1
 vim.g.gruvbox_contrast_dark = "hard"
 
 vim.opt.rnu = true
+vim.opt.tabstop = 4
+vim.opt.softtabstop = 4
+vim.opt.shiftwidth = 4
+vim.opt.expandtab = true
+vim.opt.autoindent = true
+vim.opt.smartindent = true
 vim.opt.wildmenu = true
 vim.opt.swapfile = false
 vim.opt.backup = false
@@ -27,7 +33,7 @@ vim.cmd 'syntax enable'
 vim.cmd 'filetype plugin indent on'
 
 local on_attach = function(client, bufnr)
-  vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
+    vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
 end
 
 require('lspconfig')['pyright'].setup{
