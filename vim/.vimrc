@@ -3,25 +3,23 @@ syntax on
 
 let mapleader = ","
 
-let g:gruvbox_italic=1
+let g:gruvbox_italic = 1
 let g:gruvbox_contrast_dark = "hard"
+" let g:ale_completion_enabled = 0
+" let g:ale_completion_autoimport = 0
+let g:ale_linters_explicit = 1
+" let g:ale_linters = {
+" \   'python': ['pyright'],
+" \}
+
 
 if !has('gui_running') && &term =~ '^\%(screen\|tmux\)'
   let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
   let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
 endif
 
+set omnifunc=ale#completion#OmniFunc
 set termguicolors
-
-let g:syntastic_always_populate_loc_list = 1
-let g:syntastic_auto_loc_list = 0
-let g:syntastic_check_on_open = 1
-let g:syntastic_check_on_wq = 0
-let g:syntastic_python_checkers = ["flake8"]
-let g:syntastic_python_flake8_args='--ignore=E501'
-let g:syntastic_mode_map = {
-	\ "mode": "active",
-	\ "passive_filetypes": ["go"] }
 
 set background=dark
 set mouse=a
@@ -45,3 +43,4 @@ autocmd vimenter * ++nested colorscheme gruvbox
 " vim-commentary: https://github.com/tpope/vim-commentary.git
 " vim-surround: https://github.com/tpope/vim-surround.git
 " syntastic: https://github.com/vim-syntastic/syntastic 
+" ale: https://github.com/dense-analysis/ale
