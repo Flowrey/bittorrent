@@ -16,6 +16,7 @@ vim.g.gruvbox_italic = 1
 vim.g.gruvbox_contrast_dark = "hard"
 
 vim.opt.rnu = true
+vim.opt.nu = true
 vim.opt.tabstop = 4
 vim.opt.softtabstop = 4
 vim.opt.shiftwidth = 4
@@ -56,7 +57,7 @@ require('lspconfig')['rust_analyzer'].setup{
 	on_attach = on_attach
 }
 require'nvim-treesitter.configs'.setup {
-	ensure_installed = { "python", "rust", "go" },
+	ensure_installed = { "python", "rust", "go", "lua" },
 	highlight = {
 		enable = true
 	}
