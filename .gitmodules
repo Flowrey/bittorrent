@@ -38,3 +38,7 @@
 	path = vim/.vim/pack/plugins/start/ale
 	url = https://github.com/dense-analysis/ale.git
 	branch = master
+[submodule "dotbot"]
+	path = dotbot
+	url = https://github.com/anishathalye/dotbot
+	ignore = dirty
