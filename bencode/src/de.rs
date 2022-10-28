@@ -1,10 +1,10 @@
-std::ops::{AddAssign, MulAssign, Neg};
+use std::ops::{AddAssign, MulAssign, Neg};
 
-use serde::Deserialize;
 use serde::de::{
-    self, DeserializeSeed, EnumAccess, IntoDeserializer, MapAccess, SeqAccess,
-    VariantAccess, Visitor,
+    self, DeserializeSeed, EnumAccess, IntoDeserializer, MapAccess, SeqAccess, VariantAccess,
+    Visitor,
 };
+use serde::Deserialize;
 
 use crate::error::{Error, Result};
 
@@ -42,44 +42,28 @@ where
     }
 }
 
-// SERDE IS NOT A PARSING LIBRARY. This impl block defines a few basic parsing
-// functions from scratch. More complicated formats may wish to use a dedicated
-// parsing library to help implement their Serde deserializer.
 impl<'de> Deserializer<'de> {
-    // Look at the first character in the input without consuming it.
     fn peek_char(&mut self) -> Result<char> {
         self.input.chars().next().ok_or(Error::Eof)
     }
 
-    // Consume the first character in the input.
     fn next_char(&mut self) -> Result<char> {
         let ch = self.peek_char()?;
         self.input = &self.input[ch.len_utf8()..];
         Ok(ch)
     }
 
-    // Parse the JSON identifier `true` or `false`.
     fn parse_bool(&mut self) -> Result<bool> {
-        if self.input.starts_with("true") {
-            self.input = &self.input["true".len()..];
-            Ok(true)
-        } else if self.input.starts_with("false") {
-            self.input = &self.input["false".len()..];
-            Ok(false)
-        } else {
-            Err(Error::ExpectedBoolean)
-        }
+        unimplemented!()
     }
 
-    // Parse a group of decimal digits as an unsigned integer of type T.
-    //
-    // This implementation is a bit too lenient, for example `001` is not
-    // allowed in JSON. Also the various arithmetic operations can overflow and
-    // panic or return bogus data. But it is good enough for example code!
     fn parse_unsigned<T>(&mut self) -> Result<T>
     where
         T: AddAssign<T> + MulAssign<T> + From<u8>,
     {
+        if self.next_char()? != 'i' {
+            return Err(Error::ExpectedInteger);
+        } 
         let mut int = match self.next_char()? {
             ch @ '0'..='9' => T::from(ch as u8 - b'0'),
             _ => {
@@ -93,39 +77,34 @@ impl<'de> Deserializer<'de> {
                     int *= T::from(10);
                     int += T::from(ch as u8 - b'0');
                 }
-                _ => {
+                Some('e') => {
                     return Ok(int);
                 }
+                _ => return Err(Error::ExpectedInteger),
             }
         }
     }
 
-    // Parse a possible minus sign followed by a group of decimal digits as a
-    // signed integer of type T.
     fn parse_signed<T>(&mut self) -> Result<T>
     where
         T: Neg<Output = T> + AddAssign<T> + MulAssign<T> + From<i8>,
     {
-        // Optional minus sign, delegate to `parse_unsigned`, negate if negative.
         unimplemented!()
     }
 
-    // Parse a string until the next '"' character.
-    //
-    // Makes no attempt to handle escape sequences. What did you expect? This is
-    // example code!
     fn parse_string(&mut self) -> Result<&'de str> {
-        if self.next_char()? != '"' {
-            return Err(Error::ExpectedString);
-        }
-        match self.input.find('"') {
-            Some(len) => {
-                let s = &self.input[..len];
-                self.input = &self.input[len + 1..];
-                Ok(s)
+        let len  = match self.next_char()? {
+            ch @ '0'..='9' => ch.to_digit(10).unwrap() as usize,
+            _ => {
+                return Err(Error::ExpectedString);
             }
-            None => Err(Error::Eof),
-        }
+        };
+        if self.next_char()? != ':' {
+            return Err(Error::ExpectedString);
+        } 
+        let s = &self.input[..len];
+        self.input = &self.input[len + 1..];
+        Ok(s)
     }
 }
 
@@ -140,13 +119,10 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         match self.peek_char()? {
-            'n' => self.deserialize_unit(visitor),
-            't' | 'f' => self.deserialize_bool(visitor),
-            '"' => self.deserialize_str(visitor),
-            '0'..='9' => self.deserialize_u64(visitor),
-            '-' => self.deserialize_i64(visitor),
-            '[' => self.deserialize_seq(visitor),
-            '{' => self.deserialize_map(visitor),
+            '0'..='9' => self.deserialize_str(visitor),
+            'i' => self.deserialize_u64(visitor),
+            'l' => self.deserialize_seq(visitor),
+            'd' => self.deserialize_map(visitor),
             _ => Err(Error::Syntax),
         }
     }
@@ -322,11 +298,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     }
 
     // Unit struct means a named value containing no data.
-    fn deserialize_unit_struct<V>(
-        self,
-        _name: &'static str,
-        visitor: V,
-    ) -> Result<V::Value>
+    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
@@ -336,11 +308,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     // As is done here, serializers are encouraged to treat newtype structs as
     // insignificant wrappers around the data they contain. That means not
     // parsing anything other than the contained value.
-    fn deserialize_newtype_struct<V>(
-        self,
-        _name: &'static str,
-        visitor: V,
-    ) -> Result<V::Value>
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
@@ -501,10 +469,7 @@ struct CommaSeparated<'a, 'de: 'a> {
 
 impl<'a, 'de> CommaSeparated<'a, 'de> {
     fn new(de: &'a mut Deserializer<'de>) -> Self {
-        CommaSeparated {
-            de,
-            first: true,
-        }
+        CommaSeparated { de, first: true }
     }
 }
 
@@ -635,11 +600,7 @@ impl<'de, 'a> VariantAccess<'de> for Enum<'a, 'de> {
 
     // Struct variants are represented in JSON as `{ NAME: { K: V, ... } }` so
     // deserialize the inner map here.
-    fn struct_variant<V>(
-        self,
-        _fields: &'static [&'static str],
-        visitor: V,
-    ) -> Result<V::Value>
+    fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {

@@ -12,6 +12,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     // One or more variants that can be created by data structures through the
+
     // `ser::Error` and `de::Error` traits. For example the Serialize impl for
     // Mutex<T> might return an error because the mutex is poisoned, or the
     // Deserialize impl for a struct may return an error because a required
@@ -22,20 +23,20 @@ pub enum Error {
     // Deserializer without going through `ser::Error` and `de::Error`. These
     // are specific to the format, in this case JSON.
     Eof,
-    // Syntax,
-    // ExpectedBoolean,
-    // ExpectedInteger,
-    // ExpectedString,
-    // ExpectedNull,
-    // ExpectedArray,
-    // ExpectedArrayComma,
-    // ExpectedArrayEnd,
-    // ExpectedMap,
-    // ExpectedMapColon,
-    // ExpectedMapComma,
-    // ExpectedMapEnd,
-    // ExpectedEnum,
-    // TrailingCharacters,
+    Syntax,
+    ExpectedBoolean,
+    ExpectedInteger,
+    ExpectedString,
+    ExpectedNull,
+    ExpectedArray,
+    ExpectedArrayComma,
+    ExpectedArrayEnd,
+    ExpectedMap,
+    ExpectedMapColon,
+    ExpectedMapComma,
+    ExpectedMapEnd,
+    ExpectedEnum,
+    TrailingCharacters,
 }
 
 impl ser::Error for Error {
@@ -55,7 +56,20 @@ impl Display for Error {
         match self {
             Error::Message(msg) => formatter.write_str(msg),
             Error::Eof => formatter.write_str("unexpected end of input"),
-            /* and so forth */
+            Error::ExpectedString => formatter.write_str("expected string"),
+            Error::ExpectedBoolean => todo!(),
+            Error::ExpectedInteger => todo!(),
+            Error::ExpectedNull => todo!(),
+            Error::ExpectedArray => todo!(),
+            Error::ExpectedArrayComma => todo!(),
+            Error::ExpectedArrayEnd => todo!(),
+            Error::ExpectedMap => todo!(),
+            Error::ExpectedMapColon => todo!(),
+            Error::ExpectedMapComma => todo!(),
+            Error::ExpectedMapEnd => todo!(),
+            Error::ExpectedEnum => todo!(),
+            Error::TrailingCharacters => todo!(),
+            Error::Syntax => todo!(),
         }
     }
 }
