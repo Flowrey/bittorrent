@@ -372,16 +372,16 @@ fn test_struct() {
     struct Test<'a> {
         cow: String,
         value: u32,
-        hello: &'a [u8],
+        hello: &'a serde_bytes::Bytes,
         spam: Vec<&'static str>,
     }
 
     let test = Test {
         cow: "mow".to_string(),
         value: 1,
-        hello: b"\xF0\x90\x80World",
+        hello: serde_bytes::Bytes::new(b"\xF0\x90\x80World"),
         spam: vec!["a", "b"],
     };
-    let expected = r#"d3:cow3:mow5:valuei1e4:spaml1:a1:bee"#;
+    let expected = r#"d3:cow3:mow5:valuei1e5:hello8:�World4:spaml1:a1:bee"#;
     assert_eq!(to_string(&test).unwrap(), expected);
 }
