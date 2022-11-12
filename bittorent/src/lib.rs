@@ -1,7 +1,20 @@
-use std::net::{Ipv4Addr, SocketAddrV4};
-use url::Url;
+use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use serde::{Deserialize, Serialize};
 use sha1::{Sha1, Digest};
+use url::Url;
+
+pub fn urlencode(in_str: &[u8]) -> String {
+    let mut escaped_info_hash = String::new();
+    for byte in in_str {
+        if byte.is_ascii_alphanumeric() || [b'.', b'-', b'_', b'~'].contains(&byte) {
+            escaped_info_hash.push(*byte as char);
+        } else {
+            let str = format!("%{:x}", byte);
+            escaped_info_hash.push_str(&str);
+        };
+    };
+    escaped_info_hash
+} 
 
 #[derive(Debug, Deserialize, Serialize)]
 struct File<'a> {
@@ -42,18 +55,6 @@ struct Metainfo<'a> {
     info: Info<'a>,
 }
 
-pub fn urlencode(in_str: &[u8]) -> String {
-    let mut escaped_info_hash = String::new();
-    for byte in in_str {
-        if byte.is_ascii_alphanumeric() || [b'.', b'-', b'_', b'~'].contains(&byte) {
-            escaped_info_hash.push(*byte as char);
-        } else {
-            let str = format!("%{:x}", byte);
-            escaped_info_hash.push_str(&str);
-        };
-    };
-    escaped_info_hash
-} 
 
 impl<'a> Metainfo<'a> {
     #[allow(dead_code)]
@@ -74,7 +75,7 @@ impl<'a> Metainfo<'a> {
     }
 
     pub fn get_peers(&self) -> Vec<SocketAddrV4>  {
-        let info_hash = &self.get_escaped_info_hash();
+        let info_hash = self.get_escaped_info_hash();
 
         let mut url = Url::parse(self.announce).expect("Not a valid announce url");
         url.set_query(Some(&format!("info_hash={}", info_hash)));
@@ -151,11 +152,47 @@ struct TrackerRequest<'a> {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct TrackerResponse<'a> {
     interval: u32,
+
     // Compact = 0
     // peers: Vec<Peer>,
+
     // Compact = 1
     #[serde(with = "serde_bytes")]
     peers: &'a [u8],
+}
+
+struct Connect {}
+
+impl Connect {
+    fn from_peers(peers: Vec<SocketAddrV4>) {
+        for peer in peers {
+            if let Ok(stream) = TcpStream::connect(peer) {
+                println!("Connected to the server")
+            } else {
+                println!("Could't connect to server...");
+            }
+        }
+    }
+}
+
+enum MessageType {
+    Chocke,
+    Unchoke,
+    Interested,
+    NotInterested,
+    Have,
+    Bitfield,
+    Request,
+    Piece,
+    Cancel,
+}
+
+struct Message {
+    length: u8,
+    pstr: String,
+    extensions: [u8; 8],
+    info_hash: [u8; 20],
+    peer_id: [u8; 20],
 }
 
 
@@ -174,5 +211,11 @@ fn test_get_peers() {
     let data = std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
     let deserialized = Metainfo::from_bytes(&data);
     let peers = deserialized.get_peers();
-    println!("{:#?}", peers);
+    // println!("{:#?}", peers);
+}
+
+#[test]
+fn test_connecting_to_peers() {
+    let peers = [SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 6881)];
+    let connection = Connect::from_peers(peers.to_vec());
 }
