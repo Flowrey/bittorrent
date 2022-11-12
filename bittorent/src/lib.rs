@@ -1,3 +1,4 @@
+use std::net::{Ipv4Addr, SocketAddrV4};
 use url::Url;
 use serde::{Deserialize, Serialize};
 use sha1::{Sha1, Digest};
@@ -72,13 +73,11 @@ impl<'a> Metainfo<'a> {
         urlencode(&info_hash)
     }
 
-    pub fn get_peers(&self) -> Vec<Peer> {
+    pub fn get_peers(&self) -> Vec<SocketAddrV4>  {
         let info_hash = &self.get_escaped_info_hash();
 
         let mut url = Url::parse(self.announce).expect("Not a valid announce url");
-        assert_eq!(url.as_str(), "http://bttracker.debian.org:6969/announce");
         url.set_query(Some(&format!("info_hash={}", info_hash)));
-        assert_eq!(url.as_str(), "http://bttracker.debian.org:6969/announce?info_hash=%d5%5b%e2%cd%26%3e%fa%84%ae%b9IS3%a4%fa%bcB%8aBP");
 
         let payload = TrackerRequest { 
             peer_id: "-DE203s-x49Ta1Q*sgGQ", 
@@ -96,16 +95,28 @@ impl<'a> Metainfo<'a> {
         };
 
         let input = res.unwrap();
-        let peers = match bendy::serde::from_bytes::<Vec<Peer>>(&input) {
+        let de_res = match bendy::serde::from_bytes::<TrackerResponse>(&input) {
             Ok(v) => v,
             Err(_) => panic!("Failed to deserialize tracker response"),
         };
+        let chunked_peers = de_res.peers.chunks_exact(6);
+
+        let mut peers: Vec<SocketAddrV4> = Vec::new();
+        for peer in chunked_peers {
+            let ip: [u8; 4] = peer[..4].try_into().unwrap();
+            let ip = Ipv4Addr::from(ip);
+
+            let port: [u8; 2] = peer[4..6].try_into().unwrap();
+            let port = u16::from_be_bytes(port);
+
+            let socket = SocketAddrV4::new(ip, port);
+            peers.push(socket);
+        }
         peers
     }
 }
 
 #[derive(Debug, Serialize)]
-// #[derive(Debug)]
 struct TrackerRequest<'a> {
     // 20 bytes sha1 hash of the bencoded from of the
     // info value from the metainfo file.
@@ -133,15 +144,18 @@ struct TrackerRequest<'a> {
     // This is an optional key which maps to 
     // started, completed, or stopped
     // event: &'a str,
+
     compact: u8,
-    
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-struct Peer {
-    id: String,
-    ip: String,
-    port: u16,
+struct TrackerResponse<'a> {
+    interval: u32,
+    // Compact = 0
+    // peers: Vec<Peer>,
+    // Compact = 1
+    #[serde(with = "serde_bytes")]
+    peers: &'a [u8],
 }
 
 
@@ -160,5 +174,5 @@ fn test_get_peers() {
     let data = std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
     let deserialized = Metainfo::from_bytes(&data);
     let peers = deserialized.get_peers();
-    println!("{:?}", peers);
+    println!("{:#?}", peers);
 }
