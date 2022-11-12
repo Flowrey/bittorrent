@@ -187,14 +187,36 @@ enum MessageType {
     Cancel,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct Message {
     length: u8,
-    pstr: String,
+    pstr: [u8; 19],
     extensions: [u8; 8],
     info_hash: [u8; 20],
     peer_id: [u8; 20],
 }
 
+impl Message {
+    pub fn new(info_hash: [u8; 20], peer_id: [u8; 20]) -> Self {
+        Message {
+            length: 19,
+            pstr: "BitTorrent protocol".as_bytes().try_into().unwrap(),
+            extensions: [0u8; 8],
+            info_hash,
+            peer_id,
+        }
+    }
+
+    pub fn serialize(&self) -> [u8; 68] {
+        let mut buff = [0u8; 68];
+        buff[0] = self.length;
+        buff[1..20].copy_from_slice(&self.pstr);
+        buff[20..28].copy_from_slice(&self.extensions);
+        buff[28..48].copy_from_slice(&self.info_hash);
+        buff[48..68].copy_from_slice(&self.peer_id);
+        buff
+    } 
+}
 
 #[test]
 fn test_parsing_metainfo() {
@@ -216,6 +238,10 @@ fn test_get_peers() {
 
 #[test]
 fn test_connecting_to_peers() {
+    let data = std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
+    let metainfo = Metainfo::from_bytes(&data);
     let peers = [SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 6881)];
     let connection = Connect::from_peers(peers.to_vec());
+    let msg = Message::new("-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap(), metainfo.get_info_hash());
+    println!("{:#?}", msg)
 }
