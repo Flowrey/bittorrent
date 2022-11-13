@@ -1,3 +1,4 @@
+use std::io::prelude::*;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use serde::{Deserialize, Serialize};
 use sha1::{Sha1, Digest};
@@ -115,6 +116,21 @@ impl<'a> Metainfo<'a> {
         }
         peers
     }
+
+    pub fn connect_to_peers(&self, peers: Vec<SocketAddrV4>) {
+        for peer in peers {
+            if let Ok(mut stream) = TcpStream::connect(peer) {
+                println!("Connected to the server");
+                let msg = Message::new(self.get_info_hash(), "-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap());
+                let mut buffer = [0; 512];
+                stream.write(&msg.serialize()).unwrap();
+                let n = stream.read(&mut buffer).unwrap();
+                println!("The bytes: {:?}", &buffer[..n]);
+            } else {
+                println!("Could't connect to server...");
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -161,19 +177,6 @@ struct TrackerResponse<'a> {
     peers: &'a [u8],
 }
 
-struct Connect {}
-
-impl Connect {
-    fn from_peers(peers: Vec<SocketAddrV4>) {
-        for peer in peers {
-            if let Ok(stream) = TcpStream::connect(peer) {
-                println!("Connected to the server")
-            } else {
-                println!("Could't connect to server...");
-            }
-        }
-    }
-}
 
 enum MessageType {
     Chocke,
@@ -233,7 +236,6 @@ fn test_get_peers() {
     let data = std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
     let deserialized = Metainfo::from_bytes(&data);
     let peers = deserialized.get_peers();
-    // println!("{:#?}", peers);
 }
 
 #[test]
@@ -241,7 +243,5 @@ fn test_connecting_to_peers() {
     let data = std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
     let metainfo = Metainfo::from_bytes(&data);
     let peers = [SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 6881)];
-    let connection = Connect::from_peers(peers.to_vec());
-    let msg = Message::new("-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap(), metainfo.get_info_hash());
-    println!("{:#?}", msg)
+    let connection = metainfo.connect_to_peers(peers.to_vec());
 }
