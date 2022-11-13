@@ -121,11 +121,22 @@ impl<'a> Metainfo<'a> {
         for peer in peers {
             if let Ok(mut stream) = TcpStream::connect(peer) {
                 println!("Connected to the server");
-                let msg = Handshake::new(self.get_info_hash(), "-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap());
+                let msg = Handshake::new(
+                    self.get_info_hash(), 
+                    "-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap()
+                );
                 let mut buffer = [0; 512];
                 stream.write(&msg.serialize()).unwrap();
                 let n = stream.read(&mut buffer).unwrap();
-                println!("The bytes: {:?}", &buffer[..n]);
+                let received_hanshake = Handshake::deserialize(&buffer[..68]);
+                let bitfield_message = Message::deserialize(&buffer[68..n]);
+
+                let offset = bitfield_message.length + 68 + 4;
+                let offset: usize = offset.try_into().unwrap();
+                let unchoke = Message::deserialize(&buffer[offset..n]);
+                println!("{:?}", received_hanshake);
+                println!("{:?}", bitfield_message);
+                println!("{:?}", unchoke);
             } else {
                 println!("Could't connect to server...");
             }
@@ -178,6 +189,7 @@ struct TrackerResponse<'a> {
 }
 
 
+#[derive(Debug)]
 enum MessageType {
     Chocke = 0,
     Unchoke = 1,
@@ -190,7 +202,26 @@ enum MessageType {
     Cancel = 8,
 }
 
+impl MessageType {
+    fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Chocke,
+            1 => Self::Unchoke,
+            2 => Self::Interested,
+            3 => Self::NotInterested,
+            4 => Self::Have,
+            5 => Self::Bitfield,
+            6 => Self::Request,
+            7 => Self::Piece,
+            8 => Self::Cancel,
+            _ => panic!("Unknown value: {}", value),
+        }
+    }
+}
+
+#[derive(Debug)]
 struct Message<'a> {
+    length: u32,
     id:  MessageType,
     payload: &'a [u8]
 }
@@ -206,13 +237,13 @@ impl<'a> Message<'a> {
         buff
     }
 
-    pub fn deserialize(bytes: &[u8]) -> Self {
+    pub fn deserialize(bytes: &'a [u8]) -> Self {
         let length: [u8; 4] = bytes[..4].try_into().unwrap();
         let length: u32 = u32::from_be_bytes(length);
-        let id = bytes[4];
-        let length = length as usize - 1;
-        let payload = &bytes[5..length];
-        todo!()
+        let id = MessageType::from_u8(bytes[4]);
+        let payload_length = length as usize - 1;
+        let payload = &bytes[5..5+payload_length];
+        Message { length, id, payload }
     }
 }
 
@@ -244,6 +275,15 @@ impl Handshake {
         buff[28..48].copy_from_slice(&self.info_hash);
         buff[48..68].copy_from_slice(&self.peer_id);
         buff
+    } 
+
+    pub fn deserialize(bytes: &[u8]) -> Self {
+        let length = bytes[0];
+        let pstr: [u8; 19] = bytes[1..20].try_into().unwrap();
+        let extensions: [u8; 8] = bytes[20..28].try_into().unwrap();
+        let info_hash: [u8; 20] = bytes[28..48].try_into().unwrap();
+        let peer_id: [u8; 20] = bytes[48..68].try_into().unwrap();
+        Self { length, pstr, extensions, info_hash, peer_id }
     } 
 }
 
