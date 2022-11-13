@@ -121,7 +121,7 @@ impl<'a> Metainfo<'a> {
         for peer in peers {
             if let Ok(mut stream) = TcpStream::connect(peer) {
                 println!("Connected to the server");
-                let msg = Message::new(self.get_info_hash(), "-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap());
+                let msg = Handshake::new(self.get_info_hash(), "-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap());
                 let mut buffer = [0; 512];
                 stream.write(&msg.serialize()).unwrap();
                 let n = stream.read(&mut buffer).unwrap();
@@ -179,19 +179,45 @@ struct TrackerResponse<'a> {
 
 
 enum MessageType {
-    Chocke,
-    Unchoke,
-    Interested,
-    NotInterested,
-    Have,
-    Bitfield,
-    Request,
-    Piece,
-    Cancel,
+    Chocke = 0,
+    Unchoke = 1,
+    Interested = 2,
+    NotInterested = 3,
+    Have = 4,
+    Bitfield = 5,
+    Request = 6,
+    Piece = 7,
+    Cancel = 8,
+}
+
+struct Message<'a> {
+    id:  MessageType,
+    payload: &'a [u8]
+}
+
+impl<'a> Message<'a> {
+    pub fn serialize(&self) -> Vec<u8> {
+        let length: usize = self.payload.len() + 1;
+        let mut buff: Vec<u8> = Vec::with_capacity(length + 4);
+        let length: u32 = self.payload.len().try_into().unwrap();
+        buff.extend_from_slice(&length.to_be_bytes()[..]);
+        buff.push(self.id as u8);
+        buff.extend_from_slice(self.payload);
+        buff
+    }
+
+    pub fn deserialize(bytes: &[u8]) -> Self {
+        let length: [u8; 4] = bytes[..4].try_into().unwrap();
+        let length: u32 = u32::from_be_bytes(length);
+        let id = bytes[4];
+        let length = length as usize - 1;
+        let payload = &bytes[5..length];
+        todo!()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-struct Message {
+struct Handshake {
     length: u8,
     pstr: [u8; 19],
     extensions: [u8; 8],
@@ -199,9 +225,9 @@ struct Message {
     peer_id: [u8; 20],
 }
 
-impl Message {
+impl Handshake {
     pub fn new(info_hash: [u8; 20], peer_id: [u8; 20]) -> Self {
-        Message {
+        Handshake {
             length: 19,
             pstr: "BitTorrent protocol".as_bytes().try_into().unwrap(),
             extensions: [0u8; 8],
