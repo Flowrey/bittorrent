@@ -4,13 +4,32 @@ require('packer').startup(function()
     use 'neovim/nvim-lspconfig'
     use 'rust-lang/rust.vim'
     use 'fatih/vim-go'
-    use 'morhetz/gruvbox'
+    use 'gruvbox-community/gruvbox'
     use 'tpope/vim-commentary'
     use 'tpope/vim-surround'
     use 'tpope/vim-fugitive'
     use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate' }
     use { 'nvim-telescope/telescope.nvim', tag = '0.1.0', requires = { {'nvim-lua/plenary.nvim'} } }
 end)
+
+vim.g.mapleader = " "
+
+map = vim.api.nvim_set_keymap
+map("n", "<Leader><Space>", ":noh<cr>", {noremap=true})
+
+map("t", "<Esc>", "<C-\\><C-n>", {noremap = true})
+map("t", "<A-h>", "<C-\\><C-N><C-w>h", {noremap = true})
+map("t", "<A-j>", "<C-\\><C-N><C-w>j", {noremap = true})
+map("t", "<A-k>", "<C-\\><C-N><C-w>k", {noremap = true})
+map("t", "<A-l>", "<C-\\><C-N><C-w>l", {noremap = true})
+map("i", "<A-h>", "<C-\\><C-N><C-w>h", {noremap = true})
+map("i", "<A-j>", "<C-\\><C-N><C-w>j", {noremap = true})
+map("i", "<A-k>", "<C-\\><C-N><C-w>k", {noremap = true})
+map("i", "<A-l>", "<C-\\><C-N><C-w>l", {noremap = true})
+map("n", "<A-h>", "<C-w>h", {noremap = true})
+map("n", "<A-j>", "<C-w>j", {noremap = true})
+map("n", "<A-k>", "<C-w>k", {noremap = true})
+map("n", "<A-l>", "<C-w>l", {noremap = true})
 
 vim.g.gruvbox_italic = 1
 vim.g.gruvbox_contrast_dark = "hard"
@@ -33,7 +52,7 @@ vim.opt.background = "dark"
 vim.cmd 'colorscheme gruvbox'
 vim.cmd 'syntax enable'
 vim.cmd 'filetype plugin indent on'
-
+vim.cmd 'autocmd TermOpen * setlocal nonumber norelativenumber'
 
 local on_attach = function(client, bufnr)
     vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
@@ -46,7 +65,7 @@ require('lspconfig')['pyright'].setup{
 			analysis = {
 				autoSearchPaths = true,
 				diagnosticMode = "workspace",
-				typeCheckingMode = "strict",
+				typeCheckingMode = "off",
 				useLibraryCodeForTypes = true
 			}
 		}
