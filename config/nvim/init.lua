@@ -75,8 +75,9 @@ require('lspconfig')['pyright'].setup{
 require('lspconfig')['rust_analyzer'].setup{
 	on_attach = on_attach
 }
+
 require'nvim-treesitter.configs'.setup {
-	ensure_installed = { "python", "rust", "go", "lua", "json", "toml", "yaml" },
+	ensure_installed = { "python", "rust", "go", "lua", "json", "toml", "yaml", "elixir" },
 	highlight = {
 		enable = true
 	}
