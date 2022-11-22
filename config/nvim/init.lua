@@ -76,7 +76,7 @@ require('lspconfig')['rust_analyzer'].setup{
 	on_attach = on_attach
 }
 require'nvim-treesitter.configs'.setup {
-	ensure_installed = { "python", "rust", "go", "lua" },
+	ensure_installed = { "python", "rust", "go", "lua", "json", "toml", "yaml" },
 	highlight = {
 		enable = true
 	}
