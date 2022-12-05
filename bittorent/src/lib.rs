@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
+use sha1::{Digest, Sha1};
 use std::io::prelude::*;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
-use serde::{Deserialize, Serialize};
-use sha1::{Sha1, Digest};
 use url::Url;
 
 pub fn urlencode(in_str: &[u8]) -> String {
@@ -13,9 +13,9 @@ pub fn urlencode(in_str: &[u8]) -> String {
             let str = format!("%{:x}", byte);
             escaped_info_hash.push_str(&str);
         };
-    };
+    }
     escaped_info_hash
-} 
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 struct File<'a> {
@@ -32,7 +32,7 @@ struct Info<'a> {
     // Number of bytes in each piece the file is split into
     #[serde(rename = "piece length")]
     piece_length: u32,
-    
+
     // Singe file case
     length: u32,
 
@@ -48,14 +48,13 @@ struct Info<'a> {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Metainfo<'a> {
+pub struct Metainfo<'a> {
     // The URL of the tracker.
-    announce: &'a str, 
+    announce: &'a str,
 
     #[serde(borrow)]
     info: Info<'a>,
 }
-
 
 impl<'a> Metainfo<'a> {
     #[allow(dead_code)]
@@ -67,7 +66,10 @@ impl<'a> Metainfo<'a> {
         let mut hasher = Sha1::new();
         let bencoded_info = bendy::serde::to_bytes(&self.info).expect("Failed to encode info");
         hasher.update(bencoded_info);
-        hasher.finalize().try_into().expect("hash must be of size 20")
+        hasher
+            .finalize()
+            .try_into()
+            .expect("hash must be of size 20")
     }
 
     pub fn get_escaped_info_hash(&self) -> String {
@@ -75,17 +77,17 @@ impl<'a> Metainfo<'a> {
         urlencode(&info_hash)
     }
 
-    pub fn get_peers(&self) -> Vec<SocketAddrV4>  {
+    pub fn get_peers(&self) -> Vec<SocketAddrV4> {
         let info_hash = self.get_escaped_info_hash();
 
         let mut url = Url::parse(self.announce).expect("Not a valid announce url");
         url.set_query(Some(&format!("info_hash={}", info_hash)));
 
-        let payload = TrackerRequest { 
-            peer_id: "-DE203s-x49Ta1Q*sgGQ", 
+        let payload = TrackerRequest {
+            peer_id: "-DE203s-x49Ta1Q*sgGQ",
             port: 58438,
-            uploaded: 0, 
-            downloaded: 0, 
+            uploaded: 0,
+            downloaded: 0,
             left: self.info.length,
             compact: 1,
         };
@@ -122,8 +124,8 @@ impl<'a> Metainfo<'a> {
             if let Ok(mut stream) = TcpStream::connect(peer) {
                 println!("Connected to the server");
                 let msg = Handshake::new(
-                    self.get_info_hash(), 
-                    "-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap()
+                    self.get_info_hash(),
+                    "-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap(),
                 );
                 let mut buffer = [0; 512];
                 stream.write(&msg.serialize()).unwrap();
@@ -169,10 +171,9 @@ struct TrackerRequest<'a> {
     // encoded in base ten ascii.
     left: u32,
 
-    // This is an optional key which maps to 
+    // This is an optional key which maps to
     // started, completed, or stopped
     // event: &'a str,
-
     compact: u8,
 }
 
@@ -188,9 +189,8 @@ struct TrackerResponse<'a> {
     peers: &'a [u8],
 }
 
-
-#[derive(Debug)]
-enum MessageType {
+#[derive(Debug, Copy, Clone)]
+pub enum MessageType {
     Chocke = 0,
     Unchoke = 1,
     Interested = 2,
@@ -203,7 +203,7 @@ enum MessageType {
 }
 
 impl MessageType {
-    fn from_u8(value: u8) -> Self {
+    pub fn from_u8(value: u8) -> Self {
         match value {
             0 => Self::Chocke,
             1 => Self::Unchoke,
@@ -220,10 +220,10 @@ impl MessageType {
 }
 
 #[derive(Debug)]
-struct Message<'a> {
+pub struct Message<'a> {
     length: u32,
-    id:  MessageType,
-    payload: &'a [u8]
+    id: MessageType,
+    payload: &'a [u8],
 }
 
 impl<'a> Message<'a> {
@@ -242,8 +242,12 @@ impl<'a> Message<'a> {
         let length: u32 = u32::from_be_bytes(length);
         let id = MessageType::from_u8(bytes[4]);
         let payload_length = length as usize - 1;
-        let payload = &bytes[5..5+payload_length];
-        Message { length, id, payload }
+        let payload = &bytes[5..5 + payload_length];
+        Message {
+            length,
+            id,
+            payload,
+        }
     }
 }
 
@@ -275,7 +279,7 @@ impl Handshake {
         buff[28..48].copy_from_slice(&self.info_hash);
         buff[48..68].copy_from_slice(&self.peer_id);
         buff
-    } 
+    }
 
     pub fn deserialize(bytes: &[u8]) -> Self {
         let length = bytes[0];
@@ -283,15 +287,25 @@ impl Handshake {
         let extensions: [u8; 8] = bytes[20..28].try_into().unwrap();
         let info_hash: [u8; 20] = bytes[28..48].try_into().unwrap();
         let peer_id: [u8; 20] = bytes[48..68].try_into().unwrap();
-        Self { length, pstr, extensions, info_hash, peer_id }
-    } 
+        Self {
+            length,
+            pstr,
+            extensions,
+            info_hash,
+            peer_id,
+        }
+    }
 }
 
 #[test]
 fn test_parsing_metainfo() {
-    let data = std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
+    let data =
+        std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
     let deserialized = Metainfo::from_bytes(&data);
-    assert_eq!(deserialized.announce, "http://bttracker.debian.org:6969/announce");
+    assert_eq!(
+        deserialized.announce,
+        "http://bttracker.debian.org:6969/announce"
+    );
     assert_eq!(deserialized.info.name, "debian-11.5.0-amd64-netinst.iso");
     assert_eq!(deserialized.info.piece_length, 262144);
     assert_eq!(deserialized.info.length, 400556032);
@@ -299,15 +313,17 @@ fn test_parsing_metainfo() {
 
 #[test]
 fn test_get_peers() {
-    let data = std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
+    let data =
+        std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
     let deserialized = Metainfo::from_bytes(&data);
-    let peers = deserialized.get_peers();
+    let _peers = deserialized.get_peers();
 }
 
 #[test]
 fn test_connecting_to_peers() {
-    let data = std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
+    let data =
+        std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
     let metainfo = Metainfo::from_bytes(&data);
     let peers = [SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 6881)];
-    let connection = metainfo.connect_to_peers(peers.to_vec());
+    let _connection = metainfo.connect_to_peers(peers.to_vec());
 }

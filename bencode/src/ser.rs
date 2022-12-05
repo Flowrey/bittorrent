@@ -12,9 +12,7 @@ pub fn to_bytes<T>(value: &T) -> Result<Vec<u8>>
 where
     T: Serialize,
 {
-    let mut serializer = Serializer {
-        output: Vec::new(),
-    };
+    let mut serializer = Serializer { output: Vec::new() };
     value.serialize(&mut serializer)?;
     Ok(serializer.output)
 }
@@ -83,14 +81,16 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_str(self, v: &str) -> Result<()> {
-        self.output.push(from_digit(v.len() as u32, 10).unwrap() as u8);
+        self.output
+            .push(from_digit(v.len() as u32, 10).unwrap() as u8);
         self.output.push(b':');
         self.output.append(&mut v.to_string().into_bytes());
         Ok(())
     }
 
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
-        self.output.push(from_digit(v.len() as u32, 10).unwrap() as u8);
+        self.output
+            .push(from_digit(v.len() as u32, 10).unwrap() as u8);
         self.output.push(b':');
         self.output.append(&mut v.to_vec());
         Ok(())
@@ -124,11 +124,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         unimplemented!()
     }
 
-    fn serialize_newtype_struct<T>(
-        self,
-        _name: &'static str,
-        _value: &T,
-    ) -> Result<()>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, _value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
@@ -180,11 +176,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         Ok(self)
     }
 
-    fn serialize_struct(
-        self,
-        _name: &'static str,
-        len: usize,
-    ) -> Result<Self::SerializeStruct> {
+    fn serialize_struct(self, _name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         self.serialize_map(Some(len))
     }
 
@@ -277,9 +269,9 @@ impl<'a> ser::SerializeMap for &'a mut Serializer {
     fn serialize_key<T>(&mut self, key: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
-    { 
-        key.serialize(&mut **self) 
-    } 
+    {
+        key.serialize(&mut **self)
+    }
 
     fn serialize_value<T>(&mut self, value: &T) -> Result<()>
     where
@@ -355,14 +347,8 @@ fn test_list() {
 fn test_dict() {
     use std::collections::BTreeMap;
     let mut map = BTreeMap::new();
-    map.insert(
-        "cow".to_string(),
-        "moo".to_string(),
-    );
-    map.insert(
-        "spam".to_string(),
-        "eggs".to_string(),
-    );
+    map.insert("cow".to_string(), "moo".to_string());
+    map.insert("spam".to_string(), "eggs".to_string());
 
     let expected = b"d3:cow3:moo4:spam4:eggse";
     assert_eq!(to_bytes(&map).unwrap(), expected);

@@ -1,9 +1,6 @@
 use std::ops::{AddAssign, MulAssign, Neg};
 
-use serde::de::{
-    self, DeserializeSeed, EnumAccess, MapAccess, SeqAccess, VariantAccess,
-    Visitor,
-};
+use serde::de::{self, DeserializeSeed, EnumAccess, MapAccess, SeqAccess, VariantAccess, Visitor};
 use serde::Deserialize;
 
 use crate::error::{Error, Result};
@@ -63,7 +60,7 @@ impl<'de> Deserializer<'de> {
     {
         if self.next_char()? != 'i' {
             return Err(Error::ExpectedInteger);
-        } 
+        }
         let mut int = match self.next_char()? {
             ch @ '0'..='9' => T::from(ch as u8 - b'0'),
             _ => {
@@ -92,9 +89,8 @@ impl<'de> Deserializer<'de> {
         unimplemented!()
     }
 
-    fn parse_bytes(&mut self) -> Result<&'de [u8]>
-    {
-        let len  = match self.next_char()? {
+    fn parse_bytes(&mut self) -> Result<&'de [u8]> {
+        let len = match self.next_char()? {
             ch @ '0'..='9' => ch.to_digit(10).unwrap() as usize,
             _ => {
                 return Err(Error::ExpectedString);
@@ -110,7 +106,7 @@ impl<'de> Deserializer<'de> {
     }
 
     fn parse_string(&mut self) -> Result<&'de str> {
-        let len  = match self.next_char()? {
+        let len = match self.next_char()? {
             ch @ '0'..='9' => ch.to_digit(10).unwrap() as usize,
             _ => {
                 return Err(Error::ExpectedString);
@@ -580,7 +576,7 @@ fn test_struct() {
         hello: String,
         spam: Vec<String>,
         #[serde(borrow)]
-        bin: &'a[u8],
+        bin: &'a [u8],
     }
 
     let j = r#"d5:hello5:world4:spaml1:a1:be3:bin8:�Worlde"#;
