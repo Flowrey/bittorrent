@@ -1,38 +1,26 @@
-local use = require('packer').use
-require('packer').startup(function()
-    use 'wbthomason/packer.nvim'
-    use 'neovim/nvim-lspconfig'
-    use 'rust-lang/rust.vim'
-    use 'fatih/vim-go'
-    use 'gruvbox-community/gruvbox'
-    use 'tpope/vim-commentary'
-    use 'tpope/vim-surround'
-    use 'tpope/vim-fugitive'
-    use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate' }
-    use { 'nvim-telescope/telescope.nvim', tag = '0.1.0', requires = { {'nvim-lua/plenary.nvim'} } }
-end)
+require('plugins')
+require('treesitter')
+require('lsp')
 
 vim.g.mapleader = " "
-
-map = vim.api.nvim_set_keymap
-map("n", "<Leader><Space>", ":noh<cr>", {noremap=true})
-
-map("t", "<Esc>", "<C-\\><C-n>", {noremap = true})
-map("t", "<A-h>", "<C-\\><C-N><C-w>h", {noremap = true})
-map("t", "<A-j>", "<C-\\><C-N><C-w>j", {noremap = true})
-map("t", "<A-k>", "<C-\\><C-N><C-w>k", {noremap = true})
-map("t", "<A-l>", "<C-\\><C-N><C-w>l", {noremap = true})
-map("i", "<A-h>", "<C-\\><C-N><C-w>h", {noremap = true})
-map("i", "<A-j>", "<C-\\><C-N><C-w>j", {noremap = true})
-map("i", "<A-k>", "<C-\\><C-N><C-w>k", {noremap = true})
-map("i", "<A-l>", "<C-\\><C-N><C-w>l", {noremap = true})
-map("n", "<A-h>", "<C-w>h", {noremap = true})
-map("n", "<A-j>", "<C-w>j", {noremap = true})
-map("n", "<A-k>", "<C-w>k", {noremap = true})
-map("n", "<A-l>", "<C-w>l", {noremap = true})
-
 vim.g.gruvbox_italic = 1
-vim.g.gruvbox_contrast_dark = "hard"
+vim.g.gruvbox_contrast_dark = "medium"
+
+vim.keymap.set("n", "<Leader><Space>", ":noh<cr>", {noremap=true})
+
+vim.keymap.set("t", "<Esc>", "<C-\\><C-n>", {noremap = true})
+vim.keymap.set("t", "<A-h>", "<C-\\><C-N><C-w>h", {noremap = true})
+vim.keymap.set("t", "<A-j>", "<C-\\><C-N><C-w>j", {noremap = true})
+vim.keymap.set("t", "<A-k>", "<C-\\><C-N><C-w>k", {noremap = true})
+vim.keymap.set("t", "<A-l>", "<C-\\><C-N><C-w>l", {noremap = true})
+vim.keymap.set("i", "<A-h>", "<C-\\><C-N><C-w>h", {noremap = true})
+vim.keymap.set("i", "<A-j>", "<C-\\><C-N><C-w>j", {noremap = true})
+vim.keymap.set("i", "<A-k>", "<C-\\><C-N><C-w>k", {noremap = true})
+vim.keymap.set("i", "<A-l>", "<C-\\><C-N><C-w>l", {noremap = true})
+vim.keymap.set("n", "<A-h>", "<C-w>h", {noremap = true})
+vim.keymap.set("n", "<A-j>", "<C-w>j", {noremap = true})
+vim.keymap.set("n", "<A-k>", "<C-w>k", {noremap = true})
+vim.keymap.set("n", "<A-l>", "<C-w>l", {noremap = true})
 
 vim.opt.rnu = true
 vim.opt.nu = true
@@ -54,31 +42,3 @@ vim.cmd 'syntax enable'
 vim.cmd 'filetype plugin indent on'
 vim.cmd 'autocmd TermOpen * setlocal nonumber norelativenumber'
 
-local on_attach = function(client, bufnr)
-    vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
-end
-
-require('lspconfig')['pyright'].setup{
-	on_attach = on_attach,
-	settings = {
-		python = {
-			analysis = {
-				autoSearchPaths = true,
-				diagnosticMode = "workspace",
-				typeCheckingMode = "off",
-				useLibraryCodeForTypes = true
-			}
-		}
-	}
-}
-
-require('lspconfig')['rust_analyzer'].setup{
-	on_attach = on_attach
-}
-
-require'nvim-treesitter.configs'.setup {
-	ensure_installed = { "python", "rust", "go", "lua", "json", "toml", "yaml", "elixir" },
-	highlight = {
-		enable = true
-	}
-}
