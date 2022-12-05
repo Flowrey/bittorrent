@@ -3,9 +3,12 @@ require('treesitter')
 require('lsp')
 require('completion')
 
+require('lualine').setup()
+
 vim.g.mapleader = " "
 vim.g.gruvbox_italic = 1
 vim.g.gruvbox_contrast_dark = "medium"
+vim.g.nightflyWinSeparator = 2
 
 vim.keymap.set("n", "<Leader><Space>", ":noh<cr>", {noremap=true})
 
@@ -37,8 +40,10 @@ vim.opt.backup = false
 vim.opt.wrap = false
 vim.opt.termguicolors = true
 vim.opt.background = "dark"
+vim.opt.fillchars = { horiz = '━', horizup = '┻', horizdown = '┳', vert = '┃', vertleft = '┫', vertright = '┣', verthoriz = '╋', }
 
-vim.cmd 'colorscheme gruvbox'
+-- vim.cmd 'colorscheme gruvbox'
+vim.cmd 'colorscheme nightfly'
 vim.cmd 'syntax enable'
 vim.cmd 'filetype plugin indent on'
 vim.cmd 'autocmd TermOpen * setlocal nonumber norelativenumber'
