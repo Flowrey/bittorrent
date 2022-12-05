@@ -1,6 +1,7 @@
 require('plugins')
 require('treesitter')
 require('lsp')
+require('completion')
 
 vim.g.mapleader = " "
 vim.g.gruvbox_italic = 1
