@@ -1,5 +1,4 @@
 //! BitTorent Protocol Implementation
-//!
 //! BitTorrent is a protocol for distributing files. 
 //! It identifies content by URL and is designed to integrate 
 //! seamlessly with the web. 
@@ -11,26 +10,21 @@
 //! 
 //! <https://www.bittorrent.org/beps/bep_0003.html>
 
-use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::io::prelude::*;
+use std::io::{prelude::*, BufReader};
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use url::Url;
 
 pub mod metainfo;
 pub mod utils;
+pub mod message;
+pub mod handshake;
 mod tracker;
 
 use crate::metainfo::Metainfo;
 use crate::utils::urlencode;
-
-
-// #[derive(Debug, Deserialize, Serialize)]
-// struct File<'a> {
-//     length: u32,
-//     #[serde(borrow)]
-//     path: Vec<&'a str>,
-// }
+use crate::handshake::Handshake;
+use crate::message::{Message, MessageType};
 
 
 impl<'a> Metainfo<'a> {
@@ -94,140 +88,44 @@ impl<'a> Metainfo<'a> {
     pub fn connect_to_peers(&self, peers: Vec<SocketAddrV4>) {
         for peer in peers {
             if let Ok(mut stream) = TcpStream::connect(peer) {
-                println!("Connected to the server");
+                println!("Connected to peer: {}", peer);
+
+                // Send an handshake
                 let msg = Handshake::new(
                     self.get_info_hash(),
                     "-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap(),
-                );
-                let mut buffer = [0; 512];
-                stream.write(&msg.serialize()).unwrap();
-                let n = stream.read(&mut buffer).unwrap();
-                let received_hanshake = Handshake::deserialize(&buffer[..68]);
-                let bitfield_message = Message::deserialize(&buffer[68..n]);
+                ).serialize();
+                stream.write(&msg).unwrap();
 
-                let offset = bitfield_message.length + 68 + 4;
-                let offset: usize = offset.try_into().unwrap();
-                let unchoke = Message::deserialize(&buffer[offset..n]);
-                println!("{:?}", received_hanshake);
+                let mut buf = BufReader::new(&mut stream);
+                // Receive handshake
+                let received_hanshake = Handshake::deserialize(&mut buf);
+
+                // Receive bitfield
+                let bitfield_message = Message::deserialize(&mut buf);
+
+                // Receive unchocke
+                let unchoke = Message::deserialize(&mut buf);
+
+                // Send interested
+                let intersted = Message {
+                    length: 1,
+                    id: MessageType::Interested,
+                    payload: vec![],
+                };
+                let intersted = intersted.serialize();
+                stream.write(&intersted).unwrap();
+
+                println!("{}", received_hanshake);
                 println!("{:?}", bitfield_message);
                 println!("{:?}", unchoke);
             } else {
-                println!("Could't connect to server...");
+                println!("Couldn't connect to peer...");
             }
         }
     }
 }
 
-
-/// Peer messages type
-#[derive(Debug, Copy, Clone)]
-pub enum MessageType {
-    Chocke = 0,
-    Unchoke = 1,
-    Interested = 2,
-    NotInterested = 3,
-    Have = 4,
-    Bitfield = 5,
-    Request = 6,
-    Piece = 7,
-    Cancel = 8,
-}
-
-impl MessageType {
-    pub fn from_u8(value: u8) -> Self {
-        match value {
-            0 => Self::Chocke,
-            1 => Self::Unchoke,
-            2 => Self::Interested,
-            3 => Self::NotInterested,
-            4 => Self::Have,
-            5 => Self::Bitfield,
-            6 => Self::Request,
-            7 => Self::Piece,
-            8 => Self::Cancel,
-            _ => panic!("Unknown value: {}", value),
-        }
-    }
-}
-
-/// Peer messages
-#[derive(Debug)]
-pub struct Message<'a> {
-    length: u32,
-    id: MessageType,
-    payload: &'a [u8],
-}
-
-impl<'a> Message<'a> {
-    pub fn serialize(&self) -> Vec<u8> {
-        let length: usize = self.payload.len() + 1;
-        let mut buff: Vec<u8> = Vec::with_capacity(length + 4);
-        let length: u32 = self.payload.len().try_into().unwrap();
-        buff.extend_from_slice(&length.to_be_bytes()[..]);
-        buff.push(self.id as u8);
-        buff.extend_from_slice(self.payload);
-        buff
-    }
-
-    pub fn deserialize(bytes: &'a [u8]) -> Self {
-        let length: [u8; 4] = bytes[..4].try_into().unwrap();
-        let length: u32 = u32::from_be_bytes(length);
-        let id = MessageType::from_u8(bytes[4]);
-        let payload_length = length as usize - 1;
-        let payload = &bytes[5..5 + payload_length];
-        Message {
-            length,
-            id,
-            payload,
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct Handshake {
-    length: u8,
-    pstr: [u8; 19],
-    extensions: [u8; 8],
-    info_hash: [u8; 20],
-    peer_id: [u8; 20],
-}
-
-impl Handshake {
-    pub fn new(info_hash: [u8; 20], peer_id: [u8; 20]) -> Self {
-        Handshake {
-            length: 19,
-            pstr: "BitTorrent protocol".as_bytes().try_into().unwrap(),
-            extensions: [0u8; 8],
-            info_hash,
-            peer_id,
-        }
-    }
-
-    pub fn serialize(&self) -> [u8; 68] {
-        let mut buff = [0u8; 68];
-        buff[0] = self.length;
-        buff[1..20].copy_from_slice(&self.pstr);
-        buff[20..28].copy_from_slice(&self.extensions);
-        buff[28..48].copy_from_slice(&self.info_hash);
-        buff[48..68].copy_from_slice(&self.peer_id);
-        buff
-    }
-
-    pub fn deserialize(bytes: &[u8]) -> Self {
-        let length = bytes[0];
-        let pstr: [u8; 19] = bytes[1..20].try_into().unwrap();
-        let extensions: [u8; 8] = bytes[20..28].try_into().unwrap();
-        let info_hash: [u8; 20] = bytes[28..48].try_into().unwrap();
-        let peer_id: [u8; 20] = bytes[48..68].try_into().unwrap();
-        Self {
-            length,
-            pstr,
-            extensions,
-            info_hash,
-            peer_id,
-        }
-    }
-}
 
 #[test]
 fn test_parsing_metainfo() {
