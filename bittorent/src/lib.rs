@@ -1,3 +1,7 @@
+//! Bittorent Protocol Implementation
+//! 
+//! <https://www.bittorrent.org/beps/bep_0003.html>
+
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::io::prelude::*;
@@ -24,36 +28,39 @@ struct File<'a> {
     path: Vec<&'a str>,
 }
 
+/// Informations about the Torrent
 #[derive(Debug, Deserialize, Serialize)]
-struct Info<'a> {
-    // Suggested name to save the file as
-    name: &'a str,
+pub struct Info<'a> {
+    /// Suggested name to save the file as
+    pub name: &'a str,
 
-    // Number of bytes in each piece the file is split into
+    /// Number of bytes in each piece the file is split into
     #[serde(rename = "piece length")]
-    piece_length: u32,
+    pub piece_length: u32,
 
-    // Singe file case
-    length: u32,
+    /// Singe file case
+    pub length: u32,
 
     // Multiple files case
     // files: Option<Vec<File>>,
 
-    // string whose length is a multiple of 20.
-    // It is to be subdivided into strings of length 20
-    // each of wich is the SHA1 hash of the piece at
-    // the corresponding index
+    /// string whose length is a multiple of 20.
+    /// It is to be subdivided into strings of length 20
+    /// each of wich is the SHA1 hash of the piece at
+    /// the corresponding index
     #[serde(with = "serde_bytes")]
-    pieces: &'a [u8],
+    pub pieces: &'a [u8],
 }
 
+/// Metainfo files (also known as .torrent files)
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Metainfo<'a> {
-    // The URL of the tracker.
-    announce: &'a str,
+    /// The URL of the tracker.
+    pub announce: &'a str,
 
+    /// This maps to a Info struct.
     #[serde(borrow)]
-    info: Info<'a>,
+    pub info: Info<'a>,
 }
 
 impl<'a> Metainfo<'a> {
@@ -189,6 +196,7 @@ struct TrackerResponse<'a> {
     peers: &'a [u8],
 }
 
+/// Peer messages type
 #[derive(Debug, Copy, Clone)]
 pub enum MessageType {
     Chocke = 0,
@@ -219,6 +227,7 @@ impl MessageType {
     }
 }
 
+/// Peer messages
 #[derive(Debug)]
 pub struct Message<'a> {
     length: u32,
