@@ -1,4 +1,13 @@
-//! Bittorent Protocol Implementation
+//! BitTorent Protocol Implementation
+//!
+//! BitTorrent is a protocol for distributing files. 
+//! It identifies content by URL and is designed to integrate 
+//! seamlessly with the web. 
+//! Its advantage over plain HTTP is that when multiple downloads 
+//! of the same file happen concurrently, 
+//! the downloaders upload to each other, 
+//! making it possible for the file source to support very 
+//! large numbers of downloaders with only a modest increase in its load.
 //! 
 //! <https://www.bittorrent.org/beps/bep_0003.html>
 
@@ -8,60 +17,21 @@ use std::io::prelude::*;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use url::Url;
 
-pub fn urlencode(in_str: &[u8]) -> String {
-    let mut escaped_info_hash = String::new();
-    for byte in in_str {
-        if byte.is_ascii_alphanumeric() || [b'.', b'-', b'_', b'~'].contains(&byte) {
-            escaped_info_hash.push(*byte as char);
-        } else {
-            let str = format!("%{:x}", byte);
-            escaped_info_hash.push_str(&str);
-        };
-    }
-    escaped_info_hash
-}
+pub mod metainfo;
+pub mod utils;
+mod tracker;
 
-#[derive(Debug, Deserialize, Serialize)]
-struct File<'a> {
-    length: u32,
-    #[serde(borrow)]
-    path: Vec<&'a str>,
-}
+use crate::metainfo::Metainfo;
+use crate::utils::urlencode;
 
-/// Informations about the Torrent
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Info<'a> {
-    /// Suggested name to save the file as
-    pub name: &'a str,
 
-    /// Number of bytes in each piece the file is split into
-    #[serde(rename = "piece length")]
-    pub piece_length: u32,
+// #[derive(Debug, Deserialize, Serialize)]
+// struct File<'a> {
+//     length: u32,
+//     #[serde(borrow)]
+//     path: Vec<&'a str>,
+// }
 
-    /// Singe file case
-    pub length: u32,
-
-    // Multiple files case
-    // files: Option<Vec<File>>,
-
-    /// string whose length is a multiple of 20.
-    /// It is to be subdivided into strings of length 20
-    /// each of wich is the SHA1 hash of the piece at
-    /// the corresponding index
-    #[serde(with = "serde_bytes")]
-    pub pieces: &'a [u8],
-}
-
-/// Metainfo files (also known as .torrent files)
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Metainfo<'a> {
-    /// The URL of the tracker.
-    pub announce: &'a str,
-
-    /// This maps to a Info struct.
-    #[serde(borrow)]
-    pub info: Info<'a>,
-}
 
 impl<'a> Metainfo<'a> {
     #[allow(dead_code)]
@@ -79,18 +49,13 @@ impl<'a> Metainfo<'a> {
             .expect("hash must be of size 20")
     }
 
-    pub fn get_escaped_info_hash(&self) -> String {
-        let info_hash = self.get_info_hash();
-        urlencode(&info_hash)
-    }
-
     pub fn get_peers(&self) -> Vec<SocketAddrV4> {
-        let info_hash = self.get_escaped_info_hash();
+        let info_hash = urlencode(&self.get_info_hash());
 
         let mut url = Url::parse(self.announce).expect("Not a valid announce url");
         url.set_query(Some(&format!("info_hash={}", info_hash)));
 
-        let payload = TrackerRequest {
+        let payload = tracker::Request {
             peer_id: "-DE203s-x49Ta1Q*sgGQ",
             port: 58438,
             uploaded: 0,
@@ -106,12 +71,12 @@ impl<'a> Metainfo<'a> {
         };
 
         let input = res.unwrap();
-        let de_res = match bendy::serde::from_bytes::<TrackerResponse>(&input) {
+        let de_res = match bendy::serde::from_bytes::<tracker::Response>(&input) {
             Ok(v) => v,
             Err(_) => panic!("Failed to deserialize tracker response"),
         };
-        let chunked_peers = de_res.peers.chunks_exact(6);
 
+        let chunked_peers = de_res.peers.chunks_exact(6);
         let mut peers: Vec<SocketAddrV4> = Vec::new();
         for peer in chunked_peers {
             let ip: [u8; 4] = peer[..4].try_into().unwrap();
@@ -153,48 +118,6 @@ impl<'a> Metainfo<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
-struct TrackerRequest<'a> {
-    // 20 bytes sha1 hash of the bencoded from of the
-    // info value from the metainfo file.
-    // info_hash: &'a str,
-
-    // A string of length 20 wich this downloader used as its id.
-    peer_id: &'a str,
-
-    // An optional parameter giving the IP which this peer is at.
-    // ip: &'a str,
-
-    // The port number this peer is listening on.
-    port: u16,
-
-    // The total amount uploaded so far, encoded in base ten ascii
-    uploaded: u32,
-
-    // The total amount downloaded so far
-    downloaded: u32,
-
-    // The number of bytes this peer still has to download,
-    // encoded in base ten ascii.
-    left: u32,
-
-    // This is an optional key which maps to
-    // started, completed, or stopped
-    // event: &'a str,
-    compact: u8,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct TrackerResponse<'a> {
-    interval: u32,
-
-    // Compact = 0
-    // peers: Vec<Peer>,
-
-    // Compact = 1
-    #[serde(with = "serde_bytes")]
-    peers: &'a [u8],
-}
 
 /// Peer messages type
 #[derive(Debug, Copy, Clone)]
