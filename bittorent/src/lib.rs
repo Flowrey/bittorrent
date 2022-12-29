@@ -112,6 +112,11 @@ impl<'a> Metainfo<'a> {
                 let _unchoke = Message::from_stream(
                     stream.try_clone().unwrap()
                 );
+
+                // Send intersted
+                stream.write(
+                    &Message::interested().serialize()
+                ).unwrap();
             } else {
                 println!("Couldn't connect to peer...");
             }

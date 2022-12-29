@@ -1,5 +1,6 @@
 use std::io::prelude::*;
 use std::net::TcpStream;
+use std::vec;
 
 /// Peer messages type
 #[derive(Debug, Copy, Clone)]
@@ -42,11 +43,18 @@ pub struct Message {
 
 impl Message {
 
+    pub fn interested() -> Self {
+        Self { 
+            length: 1,
+            id: MessageType::Interested, 
+            payload: vec![]
+        }
+    }
+
     pub fn serialize(&self) -> Vec<u8> {
-        let length: usize = self.payload.len() + 1;
-        let mut buff: Vec<u8> = Vec::with_capacity(length + 4);
-        let length: u32 = self.payload.len().try_into().unwrap();
-        buff.extend_from_slice(&length.to_be_bytes()[..]);
+        let mut buff = Vec::with_capacity(self.length as usize + 4);
+        let length: [u8; 4] = self.length.to_be_bytes();
+        buff.extend_from_slice(&length);
         buff.push(self.id as u8);
         buff.extend_from_slice(&self.payload);
         buff
