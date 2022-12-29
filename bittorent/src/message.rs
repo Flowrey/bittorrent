@@ -42,12 +42,24 @@ pub struct Message {
 }
 
 impl Message {
+    pub fn request(index: u32, begin: u32) -> Self {
+        let mut payload = Vec::new();
+        let length: u32 = 2_u32.pow(14);
+        payload.append(&mut index.to_be_bytes().to_vec());
+        payload.append(&mut begin.to_be_bytes().to_vec());
+        payload.append(&mut length.to_be_bytes().to_vec());
+        Self {
+            length: 13,
+            id: MessageType::Request,
+            payload,
+        }
+    }
 
     pub fn interested() -> Self {
-        Self { 
+        Self {
             length: 1,
-            id: MessageType::Interested, 
-            payload: vec![]
+            id: MessageType::Interested,
+            payload: vec![],
         }
     }
 
@@ -64,15 +76,17 @@ impl Message {
         let mut length_buff = [0u8; 4];
         stream.read_exact(&mut length_buff).unwrap();
 
-        let length = u32::from_be_bytes(length_buff); 
+        let length = u32::from_be_bytes(length_buff);
 
         let mut buf = vec![0u8; length as usize];
         stream.read_exact(&mut buf).unwrap();
 
-        let id = MessageType::from_u8(
-            buf.remove(0)
-        );
+        let id = MessageType::from_u8(buf.remove(0));
 
-        Message { length, id, payload: buf}
+        Message {
+            length,
+            id,
+            payload: buf,
+        }
     }
 }

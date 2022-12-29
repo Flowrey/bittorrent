@@ -1,13 +1,13 @@
 //! BitTorent Protocol Implementation
-//! BitTorrent is a protocol for distributing files. 
-//! It identifies content by URL and is designed to integrate 
-//! seamlessly with the web. 
-//! Its advantage over plain HTTP is that when multiple downloads 
-//! of the same file happen concurrently, 
-//! the downloaders upload to each other, 
-//! making it possible for the file source to support very 
+//! BitTorrent is a protocol for distributing files.
+//! It identifies content by URL and is designed to integrate
+//! seamlessly with the web.
+//! Its advantage over plain HTTP is that when multiple downloads
+//! of the same file happen concurrently,
+//! the downloaders upload to each other,
+//! making it possible for the file source to support very
 //! large numbers of downloaders with only a modest increase in its load.
-//! 
+//!
 //! <https://www.bittorrent.org/beps/bep_0003.html>
 
 use sha1::{Digest, Sha1};
@@ -15,17 +15,16 @@ use std::io::prelude::*;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use url::Url;
 
-pub mod metainfo;
-pub mod utils;
-pub mod message;
 pub mod handshake;
+pub mod message;
+pub mod metainfo;
 mod tracker;
+pub mod utils;
 
-use crate::metainfo::Metainfo;
-use crate::utils::urlencode;
 use crate::handshake::Handshake;
 use crate::message::Message;
-
+use crate::metainfo::Metainfo;
+use crate::utils::urlencode;
 
 impl<'a> Metainfo<'a> {
     #[allow(dead_code)]
@@ -91,32 +90,32 @@ impl<'a> Metainfo<'a> {
                 println!("Connected to peer: {}", peer);
 
                 // Send an handshake
-                stream.write(
-                    &Handshake::new(
-                        self.get_info_hash(), 
-                        "-DE203s-x49Ta1Q*sgGQ"
-                    ).serialize()
-                ).unwrap();
+                stream
+                    .write(
+                        &Handshake::new(self.get_info_hash(), "-DE203s-x49Ta1Q*sgGQ").serialize(),
+                    )
+                    .unwrap();
 
                 // Receive handshake
-                let _received_hanshake = Handshake::from_stream(
-                    stream.try_clone().unwrap()
-                );
+                let _received_hanshake = Handshake::from_stream(stream.try_clone().unwrap());
 
                 // Receive bitfield
-                let _bitfield_message = Message::from_stream(
-                    stream.try_clone().unwrap()
-                );
+                let _bitfield_message = Message::from_stream(stream.try_clone().unwrap());
 
                 // Receive unchocke
-                let _unchoke = Message::from_stream(
-                    stream.try_clone().unwrap()
-                );
+                let _unchoke = Message::from_stream(stream.try_clone().unwrap());
 
                 // Send intersted
-                stream.write(
-                    &Message::interested().serialize()
-                ).unwrap();
+                stream.write(&Message::interested().serialize()).unwrap();
+
+                // Receive unchocke
+                let _unchoke = Message::from_stream(stream.try_clone().unwrap());
+
+                // Send request
+                stream.write(&Message::request(0, 0).serialize()).unwrap();
+
+                // Receive piece
+                let _piece = Message::from_stream(stream.try_clone().unwrap());
             } else {
                 println!("Couldn't connect to peer...");
             }
@@ -151,6 +150,6 @@ fn test_connecting_to_peers() {
     let data =
         std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
     let metainfo = Metainfo::from_bytes(&data);
-    let peers = [SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 6881)];
+    let peers = [SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 53709)];
     let _connection = metainfo.connect_to_peers(peers.to_vec());
 }
