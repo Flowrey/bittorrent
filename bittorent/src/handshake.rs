@@ -1,10 +1,5 @@
-use std::net::TcpStream;
-use hex::ToHex;
-use serde::{Deserialize, Serialize};
-use std::io::{prelude::*, BufReader};
-use std::fmt;
+use std::{net::TcpStream, io::Read};
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Handshake {
     length: u8,
     pstr: [u8; 19],
@@ -13,25 +8,14 @@ pub struct Handshake {
     peer_id: [u8; 20],
 }
 
-impl fmt::Display for Handshake {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Handshake: {{ pstr:{}, extensions:{}, info_hash:{}, peer_id:{} }}", 
-            String::from_utf8_lossy(&self.pstr), 
-            String::from_utf8_lossy(&self.extensions), 
-            &self.info_hash.encode_hex::<String>(),
-            String::from_utf8_lossy(&self.peer_id),
-        )
-    }
-}
-
 impl Handshake {
-    pub fn new(info_hash: [u8; 20], peer_id: [u8; 20]) -> Self {
+    pub fn new(info_hash: [u8; 20], peer_id: &str) -> Self {
         Handshake {
             length: 19,
             pstr: "BitTorrent protocol".as_bytes().try_into().unwrap(),
             extensions: [0u8; 8],
             info_hash,
-            peer_id,
+            peer_id: peer_id.as_bytes().try_into().unwrap(),
         }
     }
 
@@ -45,22 +29,19 @@ impl Handshake {
         buff
     }
 
-    #[allow(dead_code)]
-    pub fn deserialize(buf_reader: &mut BufReader<&mut TcpStream>) -> Self {
-        let mut bytes = [0; 68];
-        buf_reader.read_exact(&mut bytes).unwrap();
+    pub fn from_stream(mut stream: TcpStream) -> Self {
+        let mut handshake_buffer = [0u8; 68];
+        stream.read_exact(&mut handshake_buffer).unwrap();
+        Self::deserialize(handshake_buffer)
+    }
 
-        let length = bytes[0];
-        let pstr: [u8; 19] = bytes[1..20].try_into().unwrap();
-        let extensions: [u8; 8] = bytes[20..28].try_into().unwrap();
-        let info_hash: [u8; 20] = bytes[28..48].try_into().unwrap();
-        let peer_id: [u8; 20] = bytes[48..68].try_into().unwrap();
+    pub fn deserialize(bytes: [u8; 68]) -> Self {
         Self {
-            length,
-            pstr,
-            extensions,
-            info_hash,
-            peer_id,
+            length: bytes[0],
+            pstr: bytes[1..20].try_into().unwrap(),
+            extensions: bytes[20..28].try_into().unwrap(),
+            info_hash: bytes[28..48].try_into().unwrap(),
+            peer_id: bytes[48..68].try_into().unwrap(),
         }
     }
 }

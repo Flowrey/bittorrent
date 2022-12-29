@@ -11,7 +11,7 @@
 //! <https://www.bittorrent.org/beps/bep_0003.html>
 
 use sha1::{Digest, Sha1};
-use std::io::{prelude::*, BufReader};
+use std::io::prelude::*;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use url::Url;
 
@@ -24,7 +24,7 @@ mod tracker;
 use crate::metainfo::Metainfo;
 use crate::utils::urlencode;
 use crate::handshake::Handshake;
-use crate::message::{Message, MessageType};
+use crate::message::Message;
 
 
 impl<'a> Metainfo<'a> {
@@ -91,41 +91,33 @@ impl<'a> Metainfo<'a> {
                 println!("Connected to peer: {}", peer);
 
                 // Send an handshake
-                let msg = Handshake::new(
-                    self.get_info_hash(),
-                    "-DE203s-x49Ta1Q*sgGQ".as_bytes().try_into().unwrap(),
-                ).serialize();
-                stream.write(&msg).unwrap();
+                stream.write(
+                    &Handshake::new(
+                        self.get_info_hash(), 
+                        "-DE203s-x49Ta1Q*sgGQ"
+                    ).serialize()
+                ).unwrap();
 
-                let mut buf = BufReader::new(&mut stream);
                 // Receive handshake
-                let received_hanshake = Handshake::deserialize(&mut buf);
+                let _received_hanshake = Handshake::from_stream(
+                    stream.try_clone().unwrap()
+                );
 
                 // Receive bitfield
-                let bitfield_message = Message::deserialize(&mut buf);
+                let _bitfield_message = Message::from_stream(
+                    stream.try_clone().unwrap()
+                );
 
                 // Receive unchocke
-                let unchoke = Message::deserialize(&mut buf);
-
-                // Send interested
-                let intersted = Message {
-                    length: 1,
-                    id: MessageType::Interested,
-                    payload: vec![],
-                };
-                let intersted = intersted.serialize();
-                stream.write(&intersted).unwrap();
-
-                println!("{}", received_hanshake);
-                println!("{:?}", bitfield_message);
-                println!("{:?}", unchoke);
+                let _unchoke = Message::from_stream(
+                    stream.try_clone().unwrap()
+                );
             } else {
                 println!("Couldn't connect to peer...");
             }
         }
     }
 }
-
 
 #[test]
 fn test_parsing_metainfo() {
