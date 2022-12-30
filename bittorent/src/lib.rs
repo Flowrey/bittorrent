@@ -11,6 +11,7 @@
 //! <https://www.bittorrent.org/beps/bep_0003.html>
 
 use sha1::{Digest, Sha1};
+use std::fs::File;
 use std::io::prelude::*;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use url::Url;
@@ -101,6 +102,7 @@ impl<'a> Metainfo<'a> {
 
                 // Receive bitfield
                 let _bitfield_message = Message::from_stream(stream.try_clone().unwrap());
+                // let bf = bitfield_message.payload;
 
                 // Receive unchocke
                 let _unchoke = Message::from_stream(stream.try_clone().unwrap());
@@ -111,16 +113,59 @@ impl<'a> Metainfo<'a> {
                 // Receive unchocke
                 let _unchoke = Message::from_stream(stream.try_clone().unwrap());
 
-                // Send request
-                stream.write(&Message::request(0, 0).serialize()).unwrap();
+                let mut file = File::create("debian.iso").unwrap();
 
-                // Receive piece
-                let _piece = Message::from_stream(stream.try_clone().unwrap());
+                let piece_hashes = self.info.pieces.chunks(20);
+
+                // Download eache pieces
+                for (index, hash) in piece_hashes.enumerate() {
+
+                    // Download one piece
+                    let mut vec_piece : Vec<u8> = Vec::new();
+                    let mut offset = 0;
+
+                    while offset < self.info.piece_length {
+                        let length: u32 = 2_u32.pow(14);
+                        // Send request
+                        stream
+                            .write(&Message::request(index as u32, offset, length).serialize())
+                            .unwrap();
+
+                        // Receive piece
+                        let piece = Message::from_stream(stream.try_clone().unwrap());
+                        let p_index = u32::from_be_bytes(
+                            piece.payload.get(0..4).unwrap().try_into().unwrap(),
+                        );
+                        let p_offset = u32::from_be_bytes(
+                            piece.payload.get(4..8).unwrap().try_into().unwrap(),
+                        );
+                        let p_data = piece.payload.get(8..).unwrap();
+                        vec_piece.append(&mut p_data.to_vec());
+                        offset = offset + length;
+                        println!("Received piece {} at offset {}", p_index, p_offset);
+                    }
+                    let mut hasher = Sha1::new();
+                    hasher.update(&vec_piece);
+                    let result = hasher.finalize();
+                    if result[..] == hash[..] {
+                        println!("Cheksum OK for piece: {}", index);
+                    } else {
+                        panic!("Invalid checksum");
+                    }
+                    file.write_all(&vec_piece).unwrap();
+                }
             } else {
                 println!("Couldn't connect to peer...");
             }
         }
     }
+}
+
+fn _has_piece(bf: &Vec<u8>, index: u32) -> bool {
+    let bytes_index = index / 8;
+    let offset = index % 8;
+    let val = bf[bytes_index as usize] >> (7 - offset) & 1;
+    val != 0
 }
 
 #[test]

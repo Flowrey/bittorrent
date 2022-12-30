@@ -42,9 +42,8 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn request(index: u32, begin: u32) -> Self {
+    pub fn request(index: u32, begin: u32, length: u32) -> Self {
         let mut payload = Vec::new();
-        let length: u32 = 2_u32.pow(14);
         payload.append(&mut index.to_be_bytes().to_vec());
         payload.append(&mut begin.to_be_bytes().to_vec());
         payload.append(&mut length.to_be_bytes().to_vec());
