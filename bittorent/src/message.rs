@@ -42,6 +42,14 @@ pub struct Message {
 }
 
 impl Message {
+    pub fn have(index: u32) -> Self {
+        Self {
+            length: 5,
+            id: MessageType::Have,
+            payload: index.to_be_bytes().to_vec(),
+        }
+    }
+
     pub fn request(index: u32, begin: u32, length: u32) -> Self {
         let mut payload = Vec::new();
         payload.append(&mut index.to_be_bytes().to_vec());

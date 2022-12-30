@@ -90,74 +90,88 @@ impl<'a> Metainfo<'a> {
             if let Ok(mut stream) = TcpStream::connect(peer) {
                 println!("Connected to peer: {}", peer);
 
-                // Send an handshake
-                stream
-                    .write(
-                        &Handshake::new(self.get_info_hash(), "-DE203s-x49Ta1Q*sgGQ").serialize(),
-                    )
-                    .unwrap();
+                // Establish the handshake
+                self.establish_handshake(&mut stream);
 
-                // Receive handshake
-                let _received_hanshake = Handshake::from_stream(stream.try_clone().unwrap());
-
-                // Receive bitfield
-                let _bitfield_message = Message::from_stream(stream.try_clone().unwrap());
-                // let bf = bitfield_message.payload;
-
-                // Receive unchocke
-                let _unchoke = Message::from_stream(stream.try_clone().unwrap());
-
-                // Send intersted
+                // Send intersted & Receive unchocke
                 stream.write(&Message::interested().serialize()).unwrap();
-
-                // Receive unchocke
                 let _unchoke = Message::from_stream(stream.try_clone().unwrap());
 
+                // Create the file
                 let mut file = File::create("debian.iso").unwrap();
-
+                // Split the hashes
                 let piece_hashes = self.info.pieces.chunks(20);
 
                 // Download eache pieces
                 for (index, hash) in piece_hashes.enumerate() {
-
-                    // Download one piece
-                    let mut vec_piece : Vec<u8> = Vec::new();
-                    let mut offset = 0;
-
-                    while offset < self.info.piece_length {
-                        let length: u32 = 2_u32.pow(14);
-                        // Send request
-                        stream
-                            .write(&Message::request(index as u32, offset, length).serialize())
-                            .unwrap();
-
-                        // Receive piece
-                        let piece = Message::from_stream(stream.try_clone().unwrap());
-                        let p_index = u32::from_be_bytes(
-                            piece.payload.get(0..4).unwrap().try_into().unwrap(),
-                        );
-                        let p_offset = u32::from_be_bytes(
-                            piece.payload.get(4..8).unwrap().try_into().unwrap(),
-                        );
-                        let p_data = piece.payload.get(8..).unwrap();
-                        vec_piece.append(&mut p_data.to_vec());
-                        offset = offset + length;
-                        println!("Received piece {} at offset {}", p_index, p_offset);
-                    }
-                    let mut hasher = Sha1::new();
-                    hasher.update(&vec_piece);
-                    let result = hasher.finalize();
-                    if result[..] == hash[..] {
-                        println!("Cheksum OK for piece: {}", index);
-                    } else {
-                        panic!("Invalid checksum");
-                    }
-                    file.write_all(&vec_piece).unwrap();
+                    self.download_piece(&mut stream, &mut file, index, hash);
                 }
             } else {
                 println!("Couldn't connect to peer...");
             }
         }
+    }
+
+    fn establish_handshake(&self, stream: &mut TcpStream) {
+        // Send an handshake
+        stream
+            .write(&Handshake::new(self.get_info_hash(), "-DE203s-x49Ta1Q*sgGQ").serialize())
+            .unwrap();
+
+        // Receive handshake
+        let _received_hanshake = Handshake::from_stream(stream.try_clone().unwrap());
+
+        // Receive bitfield
+        let _bitfield_message = Message::from_stream(stream.try_clone().unwrap());
+        // let bf = bitfield_message.payload;
+
+        // Receive unchocke
+        let _unchoke = Message::from_stream(stream.try_clone().unwrap());
+    }
+
+    fn download_piece(&self, stream: &mut TcpStream, file: &mut File, index: usize, hash: &[u8]) {
+        // Download one piece
+        let mut vec_piece: Vec<u8> = Vec::new();
+        let mut offset = 0;
+
+        while offset < self.info.piece_length {
+            let length: u32 = 2_u32.pow(14);
+            // Send request
+            stream
+                .write(&Message::request(index as u32, offset, length).serialize())
+                .unwrap();
+
+            // Receive piece
+            let piece = Message::from_stream(stream.try_clone().unwrap());
+            let p_index = u32::from_be_bytes(piece.payload.get(0..4).unwrap().try_into().unwrap());
+            let p_offset = u32::from_be_bytes(piece.payload.get(4..8).unwrap().try_into().unwrap());
+            let p_data = piece.payload.get(8..).unwrap();
+            vec_piece.append(&mut p_data.to_vec());
+            offset = offset + length;
+            println!("Received piece {} at offset {}", p_index, p_offset);
+        }
+
+        // Verify the hashs of the downloaded piece
+        let mut hasher = Sha1::new();
+        hasher.update(&vec_piece);
+        let result = hasher.finalize();
+        if result[..] == hash[..] {
+            println!(
+                "Cheksum {} valid for piece {}",
+                hash.into_iter().map(|v| format!("{:x}",v)).collect::<String>(),
+                index,
+            );
+        } else {
+            panic!("Invalid checksum");
+        }
+
+        // Write the piece to the file
+        file.write_all(&vec_piece).unwrap();
+
+        // Send we have the piece
+        stream
+            .write(&Message::have(index as u32).serialize())
+            .unwrap();
     }
 }
 
