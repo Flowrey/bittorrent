@@ -30,12 +30,14 @@ pub struct Peer {
 }
 
 impl Peer {
-    pub fn establish_connection(socket_addr_v4: SocketAddrV4, metainfo: Metainfo) -> Result<Peer, String> {
+    pub fn establish_connection(
+        socket_addr_v4: SocketAddrV4,
+        metainfo: Metainfo,
+    ) -> Result<Peer, String> {
         Ok(Peer {
             _socket_addr_v4: socket_addr_v4,
             metainfo,
-            stream: TcpStream::connect(socket_addr_v4)
-                .map_err(|_| "Couldn't connect to peer")?,
+            stream: TcpStream::connect(socket_addr_v4).map_err(|_| "Couldn't connect to peer")?,
         })
     }
 
@@ -55,14 +57,14 @@ impl Peer {
         let _unchoke = Message::from_stream(self.stream.try_clone().unwrap());
     }
 
-    pub fn download_piece(&mut self, index: usize) {
+    pub async fn download_piece(&mut self, index: usize) {
         let mut buff: Vec<u8> = Vec::new();
         let mut offset = 0;
         let hash_list: Vec<&[u8]> = self.metainfo.info.pieces.chunks(20).collect();
 
-        self.stream.write(
-            &Message::interested().serialize()
-        ).unwrap();
+        self.stream
+            .write(&Message::interested().serialize())
+            .unwrap();
 
         let _unchoke = Message::from_stream(self.stream.try_clone().unwrap());
 
@@ -133,20 +135,23 @@ fn test_get_peers() {
 async fn test_connecting_to_peers() {
     let data =
         std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
-    let metainfo = Metainfo::from_bytes(&data);
     let peer_id = "-DE203s-x49Ta1Q*sgGQ";
     let peers = [SocketAddrV4::new(
         std::net::Ipv4Addr::new(127, 0, 0, 1),
         53709,
     )];
 
-    let n_piece = metainfo.info.pieces.chunks(20).len();
 
     for peer in peers {
-        let mut peer = Peer::establish_connection(peer, metainfo.clone()).unwrap();
-        peer.establish_handshake(peer_id);
-        for piece in 0..n_piece {
-            peer.download_piece(piece);
-        }
+        let metainfo = Metainfo::from_bytes(&data);
+        let n_piece = metainfo.info.pieces.chunks(20).len();
+        let handle = tokio::spawn(async move {
+            let mut peer = Peer::establish_connection(peer, metainfo.clone()).unwrap();
+            peer.establish_handshake(peer_id);
+            for piece in 0..n_piece {
+                peer.download_piece(piece).await;
+            }
+        });
+        handle.await.unwrap();
     }
 }
