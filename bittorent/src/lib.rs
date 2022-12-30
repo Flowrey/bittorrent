@@ -85,30 +85,34 @@ impl<'a> Metainfo<'a> {
         peers
     }
 
-    pub fn connect_to_peers(&self, peers: Vec<SocketAddrV4>) {
+    pub async fn connect_to_peers(&self, peers: Vec<SocketAddrV4>) {
         for peer in peers {
-            if let Ok(mut stream) = TcpStream::connect(peer) {
-                println!("Connected to peer: {}", peer);
+            self.establish_connection(peer).await;
+        }
+    }
 
-                // Establish the handshake
-                self.establish_handshake(&mut stream);
+    async fn establish_connection(&self, peer: SocketAddrV4) {
+        if let Ok(mut stream) = TcpStream::connect(peer) {
+            println!("Connected to peer: {}", peer);
 
-                // Send intersted & Receive unchocke
-                stream.write(&Message::interested().serialize()).unwrap();
-                let _unchoke = Message::from_stream(stream.try_clone().unwrap());
+            // Establish the handshake
+            self.establish_handshake(&mut stream);
 
-                // Create the file
-                let mut file = File::create("debian.iso").unwrap();
-                // Split the hashes
-                let piece_hashes = self.info.pieces.chunks(20);
+            // Send intersted & Receive unchocke
+            stream.write(&Message::interested().serialize()).unwrap();
+            let _unchoke = Message::from_stream(stream.try_clone().unwrap());
 
-                // Download eache pieces
-                for (index, hash) in piece_hashes.enumerate() {
-                    self.download_piece(&mut stream, &mut file, index, hash);
-                }
-            } else {
-                println!("Couldn't connect to peer...");
+            // Create the file
+            let mut file = File::create("debian.iso").unwrap();
+            // Split the hashes
+            let piece_hashes = self.info.pieces.chunks(20);
+
+            // Download eache pieces
+            for (index, hash) in piece_hashes.enumerate() {
+                self.download_piece(&mut stream, &mut file, index, hash);
             }
+        } else {
+            println!("Couldn't connect to peer...");
         }
     }
 
@@ -204,11 +208,11 @@ fn test_get_peers() {
     let _peers = deserialized.get_peers();
 }
 
-#[test]
-fn test_connecting_to_peers() {
+#[tokio::test]
+async fn test_connecting_to_peers() {
     let data =
         std::fs::read("debian-11.5.0-amd64-netinst.iso.torrent").expect("Unable to read file");
     let metainfo = Metainfo::from_bytes(&data);
     let peers = [SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 53709)];
-    let _connection = metainfo.connect_to_peers(peers.to_vec());
+    let _connection = metainfo.connect_to_peers(peers.to_vec()).await;
 }
